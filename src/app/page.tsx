@@ -106,7 +106,7 @@ export default function Home() {
           {radio === "all" ? (
             <tbody id="todo-body">
               {todoList.map((todo, index) => (
-                <tr>
+                <tr key={todo.comment}>
                   <td>{index}</td>
                   <td>{todo.comment}</td>
                   <td>
