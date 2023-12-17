@@ -3,6 +3,7 @@ import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { Todo } from "@prisma/client";
 import { Box, Button, Group, Table, Title, Radio } from "@mantine/core";
+import { useQueryTodos } from "./hooks/useQueryTodos";
 
 type TodoList = {
   title: string;
@@ -10,6 +11,7 @@ type TodoList = {
 }[];
 
 export default function Home() {
+  const { data: to, isPending, error } = useQueryTodos();
   const [todoText, setTodoText] = useState("");
   const [todos, setTodos] = useState<Todo[]>([]);
   const onChangeTodoText = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -17,6 +19,8 @@ export default function Home() {
   };
   const [filteredTodoList, setFilteredTodoList] = useState<Todo[]>([]);
   const [radio, setRadio] = useState("all");
+
+  console.log(to);
 
   useEffect(() => {
     const getTodo = async () => {
