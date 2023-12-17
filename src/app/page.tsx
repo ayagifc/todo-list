@@ -1,60 +1,93 @@
 "use client";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Todo } from "@prisma/client";
 
 type TodoList = {
-  comment: string;
+  title: string;
   status: string;
 }[];
 
 export default function Home() {
   const [todoText, setTodoText] = useState("");
-  const [todoList, setNewTodoList] = useState<TodoList>([]);
-  const onChangeTodoText = (event) => {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const onChangeTodoText = (event: React.ChangeEvent<HTMLInputElement>) => {
     setTodoText(event.target.value);
   };
-  const [filteredTodoList, setFilteredTodoList] = useState<TodoList>([]);
+  const [filteredTodoList, setFilteredTodoList] = useState<Todo[]>([]);
   const [radio, setRadio] = useState("all");
 
-  // 追加ボタンを押すとタスクがToDoリストに追加される
-  const onClickAdd = () => {
-    if (todoText === "") return;
-    const newTodo = {
-      comment: todoText,
-      status: "作業中",
+  useEffect(() => {
+    const getTodo = async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/todo`);
+      const todos = await response.json();
+      setTodos(todos);
     };
-    // DOMが更新される
-    todoList.push(newTodo);
-    // 入力フォーム内を""にする
+    getTodo();
+  }, [todos]);
+
+  const postTodo = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!todoText) alert("入力してください");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/todo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: todoText }),
+    });
+    const newTodo = await response.json();
+    setTodos((prevState) => [...prevState, newTodo]);
     setTodoText("");
+    console.log(newTodo);
   };
 
-  const onClickSwitch = (index: number) => {
-    const switchTodoList = [...todoList];
-    if (switchTodoList[index].status === "作業中") {
-      switchTodoList[index].status = "完了";
-    } else if (switchTodoList[index].status === "完了") {
-      switchTodoList[index].status = "作業中";
-    }
-    setNewTodoList(switchTodoList);
+  const updateTodo = async (todo: Todo) => {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/todo/${todo.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ completed: todo.completed }),
+      }
+    );
+    const updatedTodo = await response.json();
+    setTodos(
+      todos.map((todo) => {
+        if (todo.id === updatedTodo.id) {
+          return updatedTodo;
+        } else {
+          return todo;
+        }
+      })
+    );
   };
 
-  const onClickDelete = (index: number) => {
-    const deletedTodoList = [...todoList];
-    deletedTodoList.splice(index, 1);
-    setNewTodoList(deletedTodoList);
+  const deleteTodo = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+    todo: Todo
+  ) => {
+    e.preventDefault();
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/todo/${todo.id}`,
+      {
+        method: "DELETE",
+      }
+    );
+    const deleteTodo = await response.json();
+    setTodos(todos.filter((todo) => todo.id !== deleteTodo.id));
   };
 
   const handleChange = (event: any) => {
     setRadio(event.target.value);
     if (event.target.value === "incomplete") {
-      const incompleteTodoList = [...todoList].filter(
-        (todo) => todo.status === "作業中"
+      const incompleteTodoList = [...todos].filter(
+        (todo) => todo.completed === false
       );
       setFilteredTodoList(incompleteTodoList);
     } else if (event.target.value === "complete") {
-      const completeTodoList = [...todoList].filter(
-        (todo) => todo.status === "完了"
+      const completeTodoList = [...todos].filter(
+        (todo) => todo.completed === true
       );
       setFilteredTodoList(completeTodoList);
     }
@@ -105,17 +138,17 @@ export default function Home() {
           </thead>
           {radio === "all" ? (
             <tbody id="todo-body">
-              {todoList.map((todo, index) => (
-                <tr key={todo.comment}>
-                  <td>{index}</td>
-                  <td>{todo.comment}</td>
+              {todos.map((todo, index) => (
+                <tr key={todo.title}>
+                  <td>{todo.id}</td>
+                  <td>{todo.title}</td>
                   <td>
-                    <button onClick={() => onClickSwitch(index)}>
-                      {todo.status}
+                    <button onClick={() => updateTodo(todo)}>
+                      {todo.completed ? "完了" : "作業中"}
                     </button>
                   </td>
                   <td>
-                    <button onClick={() => onClickDelete(index)}>削除</button>
+                    <button onClick={(e) => deleteTodo(e, todo)}>削除</button>
                   </td>
                 </tr>
               ))}
@@ -123,16 +156,16 @@ export default function Home() {
           ) : (
             <tbody id="todo-body">
               {filteredTodoList.map((todo, index) => (
-                <tr key={todo.comment}>
-                  <td>{index}</td>
-                  <td>{todo.comment}</td>
+                <tr key={todo.title}>
+                  <td>{todo.id}</td>
+                  <td>{todo.title}</td>
                   <td>
-                    <button onClick={() => onClickSwitch(index)}>
-                      {todo.status}
+                    <button onClick={() => updateTodo(todo)}>
+                      {todo.completed ? "完了" : "作業中"}
                     </button>
                   </td>
                   <td>
-                    <button onClick={() => onClickDelete(index)}>削除</button>
+                    <button onClick={(e) => deleteTodo(e, todo)}>削除</button>
                   </td>
                 </tr>
               ))}
@@ -141,10 +174,19 @@ export default function Home() {
         </table>
       </div>
       <h2>新規タスクの追加</h2>
-      <div className="add-todo">
-        <input value={todoText} onChange={onChangeTodoText} />
-        <button onClick={onClickAdd}>追加</button>
-      </div>
+      <form className="add-todo" onSubmit={postTodo}>
+        <input
+          value={todoText}
+          onChange={onChangeTodoText}
+          placeholder="Todoを入力してください"
+        />
+        <button
+          type="submit"
+          // className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded'
+        >
+          追加
+        </button>
+      </form>
     </>
   );
 }
