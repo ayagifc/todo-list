@@ -2,6 +2,7 @@
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { Todo } from "@prisma/client";
+import { Box, Button, Group, Table, Title, Radio } from "@mantine/core";
 
 type TodoList = {
   title: string;
@@ -24,7 +25,27 @@ export default function Home() {
       setTodos(todos);
     };
     getTodo();
-  }, [todos]);
+  }, []);
+
+  useEffect(() => {
+    if (radio === "all") setFilteredTodoList(todos);
+    if (radio === "incomplete") {
+      const filteredTodo = todos.filter((item) => item.completed === false);
+      setFilteredTodoList(filteredTodo);
+    }
+    if (radio === "complete") {
+      const filteredTodo = todos.filter((item) => item.completed === true);
+      setFilteredTodoList(filteredTodo);
+    }
+  }, [todos, radio]);
+
+  const ths = (
+    <Table.Tr>
+      <Table.Th>ID</Table.Th>
+      <Table.Th>タスク名</Table.Th>
+      <Table.Th>状態</Table.Th>
+    </Table.Tr>
+  );
 
   const postTodo = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -63,11 +84,7 @@ export default function Home() {
     );
   };
 
-  const deleteTodo = async (
-    e: React.MouseEvent<HTMLButtonElement>,
-    todo: Todo
-  ) => {
-    e.preventDefault();
+  const deleteTodo = async (todo: Todo) => {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/todo/${todo.id}`,
       {
@@ -95,83 +112,56 @@ export default function Home() {
   };
 
   return (
-    <>
+    <Box maw="90%" my="lg" mx="auto" style={{ textAlign: "center" }}>
       <div className="complete-area">
-        <label>
-          <input
-            type="radio"
-            value="all"
-            onChange={handleChange}
-            checked={radio === "all"}
-          />
-          すべて
-        </label>
+        <Group justify="center" mb="lg">
+          <Radio.Group name="taskFileter" onChange={setRadio} value={radio}>
+            <Group mt="xs">
+              <Radio value="all" label="すべて" />
+              <Radio value="incomplete" label="作業中" />
+              <Radio value="complete" label="完了" />
+            </Group>
+          </Radio.Group>
+        </Group>
 
-        <label>
-          <input
-            type="radio"
-            value="incomplete"
-            onChange={handleChange}
-            checked={radio === "incomplete"}
-          />
-          作業中
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            value="complete"
-            onChange={handleChange}
-            checked={radio === "complete"}
-          />
-          完了
-        </label>
-
-        <h1>ToDoリスト</h1>
-        <table>
-          <thead>
-            <tr>
-              <td>ID</td>
-              <td>コメント</td>
-              <td>状態</td>
-            </tr>
-          </thead>
-          {radio === "all" ? (
-            <tbody id="todo-body">
-              {todos.map((todo, index) => (
-                <tr key={todo.title}>
-                  <td>{todo.id}</td>
-                  <td>{todo.title}</td>
-                  <td>
-                    <button onClick={() => updateTodo(todo)}>
-                      {todo.completed ? "完了" : "作業中"}
-                    </button>
-                  </td>
-                  <td>
-                    <button onClick={(e) => deleteTodo(e, todo)}>削除</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          ) : (
-            <tbody id="todo-body">
+        <Title>ToDoリスト</Title>
+        <Group justify="center">
+          <Table striped highlightOnHover withTableBorder withColumnBorders>
+            <Table.Thead>{ths}</Table.Thead>
+            <Table.Tbody>
               {filteredTodoList.map((todo, index) => (
-                <tr key={todo.title}>
-                  <td>{todo.id}</td>
-                  <td>{todo.title}</td>
-                  <td>
-                    <button onClick={() => updateTodo(todo)}>
+                <Table.Tr key={todo.id}>
+                  <Table.Td maw="1rem">{todo.id}</Table.Td>
+                  <Table.Td
+                    maw="10rem"
+                    miw="10rem"
+                    style={{ wordWrap: "break-word", textAlign: "left" }}
+                  >
+                    {todo.title}
+                  </Table.Td>
+                  <Table.Td maw="3rem">
+                    <Button
+                      variant="outline"
+                      color="black"
+                      onClick={() => updateTodo(todo)}
+                    >
                       {todo.completed ? "完了" : "作業中"}
-                    </button>
-                  </td>
-                  <td>
-                    <button onClick={(e) => deleteTodo(e, todo)}>削除</button>
-                  </td>
-                </tr>
+                    </Button>
+                  </Table.Td>
+                  <Table.Td maw="2rem">
+                    <Button
+                      variant="outline"
+                      color="black"
+                      onClick={() => deleteTodo(todo)}
+                    >
+                      削除
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
               ))}
-            </tbody>
-          )}
-        </table>
+            </Table.Tbody>
+          </Table>
+        </Group>
       </div>
       <h2>新規タスクの追加</h2>
       <form className="add-todo" onSubmit={postTodo}>
@@ -180,14 +170,11 @@ export default function Home() {
           onChange={onChangeTodoText}
           placeholder="Todoを入力してください"
         />
-        <button
-          type="submit"
-          // className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded'
-        >
+        <Button variant="outline" color="black" type="submit">
           追加
-        </button>
+        </Button>
       </form>
-    </>
+    </Box>
   );
 }
 
